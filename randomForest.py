@@ -25,7 +25,7 @@ for validation purposes from train.csv
 train_features, test_features, train_labels, test_labels = train_test_split(features, labels, test_size = 0.25, random_state = 42)
 
 # Instantiate model with 1000 decision trees
-rf = RandomForestRegressor(n_estimators = 2000, random_state = 42)
+rf = RandomForestRegressor(n_estimators = 500, random_state = 42)
 # Train the model on training data
 rf.fit(train_features, train_labels);
 
