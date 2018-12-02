@@ -88,9 +88,9 @@ def main():
         featureFrame.drop(['key', 'pickup_latitude', 'pickup_longitude', 'dropoff_latitude', 'dropoff_longitude', 'pickup_datetime'], axis = 1, inplace=True)
 
         if(count == 0):
-            featureFrame.to_csv('train_processed_2.csv', mode='a', header=True, index=False)
+            featureFrame.to_csv('train_processed.csv', mode='a', header=True, index=False)
         else:
-            featureFrame.to_csv('train_processed_2.csv', mode='a', header=False, index=False)
+            featureFrame.to_csv('train_processed.csv', mode='a', header=False, index=False)
         count += 1
 
 main()
