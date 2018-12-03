@@ -30,13 +30,13 @@ model.add(Dense(1))
 
 def root_means_squared_error(y_true, y_pred):
     return k.sqrt(k.mean(k.square(y_pred - y_true)))
-#compile model using mse as a measure of model performance
+#compile model using rmse as a measure of model performance
 model.compile(optimizer='adam', loss=root_means_squared_error)
 
 #set early stopping monitor so the model stops training when it won't improve anymore
-early_stopping_monitor = EarlyStopping(patience=3)
+early_stopping_monitor = EarlyStopping(patience=5)
 #train model
-model.fit(train_X, train_y, validation_split=0.2, epochs=30, callbacks=[early_stopping_monitor])
+model.fit(train_X, train_y, validation_split=0.2, epochs=30, shuffle=True, batch_size=100000, callbacks=[early_stopping_monitor])
 
 
 

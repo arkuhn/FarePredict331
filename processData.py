@@ -76,7 +76,7 @@ def main():
     count = 0
     #Read and clean features by chunk
     print(datetime.now())
-    for chunk in pd.read_csv('train.csv', chunksize=2000):
+    for chunk in pd.read_csv('train.csv', chunksize=10000):
         print('Processing chunk ' + str(count))
         #Clean outliers, incomplete, bad lat/lons
         featureFrame = cleanData(chunk)
