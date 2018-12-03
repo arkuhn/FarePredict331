@@ -3,3 +3,4 @@ geopy
 pandas
 keras
 tensorflow
+holidays
