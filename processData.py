@@ -1,8 +1,8 @@
 from datetime import datetime
-import geopy.distance
 import pandas as pd
 import numpy as np
 import holidays
+import locationFeatures
 
 #NYC Bounding box
 LONGITUDE_MIN = -74.263242
@@ -34,7 +34,6 @@ def isRushour(dt):
     4pm - 6pm -> Military -> 16 - 19
     5am - 9am -> Military -> 5 - 9
     """
-
     if ((dt.hour >= 5 and dt.hour <= 9) or (dt.hour >= 16 and dt.hour <= 19)):
         return 1
     return 0
@@ -53,17 +52,7 @@ def isHoliday(dt):
 
 def processDates(datetimeString):
     dtObject = datetime.strptime(datetimeString, '%Y-%m-%d %H:%M:%S %Z')
-
     return (isRushour(dtObject), isWeekend(dtObject), isHoliday(dtObject))
-
-def calculateDistance(lon1, lat1, lon2, lat2):
-    coords1 = (lat1, lon1)
-    coords2 = (lat2, lon2)
-
-    #The Vincenty distance apparently is more accurate than the Haversine formula
-    distance = geopy.distance.vincenty(coords1, coords2).km
-
-    return distance
 
 def normalizePassengerCount(count):
     return count / MAX_PASSENGERS
@@ -80,24 +69,49 @@ def processData(row):
     #Extract date time features
     isRushhour, isWeekend, isHoliday = processDates(dt)
 
-    #Consolidate lat/lons into distance
-    distance = calculateDistance(lon1, lat1, lon2, lat2)
+    #Extract route features
+    (distance, isAirport, isManhattanPickup, isManhattanDropOff, 
+    isQueensPickup, isQueensDropOff, isBronxPickup, 
+    isBronxDropOff, isStatenPickup, isStatenDropOff, 
+    isBrooklynPickup, isBrooklynDropOff) = locationFeatures.processLocation(lat1, lon1, lat2, lon2)
 
     normalizedPC = normalizePassengerCount(row['passenger_count'])
 
-    return (isRushhour, isWeekend, isHoliday, normalizedPC, distance)
+    return (isRushhour, isWeekend, isHoliday, 
+    normalizedPC, distance, isAirport, isManhattanPickup, 
+    isManhattanDropOff, isQueensPickup, isQueensDropOff, 
+    isBronxPickup, isBronxDropOff, isStatenPickup, 
+    isStatenDropOff, isBrooklynPickup, isBrooklynDropOff)
 
 def main():
     count = 0
+    linesRead = 0
     #Read and clean features by chunk
     print(datetime.now())
-    for chunk in pd.read_csv('train.csv', chunksize=10000):
+    for chunk in pd.read_csv('train.csv', chunksize=100000):
+        #linesRead += 100000
+        #if (linesRead <= 40000000):
+        #    continue
         print('Processing chunk ' + str(count))
         #Clean outliers, incomplete, bad lat/lons
         featureFrame = cleanData(chunk)
 
-        #Engineer features
-        featureFrame['isRushHour'], featureFrame['isWeekend'], featureFrame['isHoliday'], featureFrame['normalizedPC'], featureFrame['distance'] = zip(*featureFrame.apply(processData, axis=1))
+        """
+        Engineer features
+        """
+        (
+        #Datetime
+        featureFrame['isRushHour'], featureFrame['isWeekend'], featureFrame['isHoliday'], 
+        
+        #Passenger count
+        featureFrame['normalizedPC'], 
+
+        #Location
+        featureFrame['distance'], featureFrame['isAirport'], featureFrame['isManhattanPickup'], featureFrame['isManhattanDropOff'],
+        featureFrame['isQueensPickup'], featureFrame['isQueensDropOff'], featureFrame['isBronxPickup'],
+        featureFrame['isBronxDropOff'], featureFrame['isStatenPickup'], featureFrame['isStatenDropOff'],
+        featureFrame['isBrooklynPickup'], featureFrame['isBrooklynDropOff']
+        ) = zip(*featureFrame.apply(processData, axis=1))
 
         #Drop leftover raw data
         featureFrame.drop(['key', 'pickup_latitude', 'pickup_longitude', 'dropoff_latitude', 'dropoff_longitude', 'pickup_datetime', 'passenger_count'], axis = 1, inplace=True)
