@@ -5,3 +5,5 @@ keras
 tensorflow
 holidays
 matplotlib
+geographiclib
+h5py
