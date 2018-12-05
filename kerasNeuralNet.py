@@ -65,17 +65,18 @@ def train(filename, modelfile):
 
 #Train by loading batches of file
 def batch_train(filename, modelfile):
-    chunk_size = 200
-    counter = 0
-    for data in pd.read_csv(filename, chunksize=chunk_size):
-        counter += 1
-        print('batch ' + str(counter))
-        train_X, train_y, n_cols = prepare_data(data)
-        model = load_or_make_model(n_cols, modelfile)
-        results = model.fit(train_X, train_y, validation_split=0.2, shuffle=True, epochs=3)
-        #Save first time and every 10 batches
-        model.save(modelfile)
-    #save_history(results)
+    epochs = 2
+    chunk_size = 100000
+    for epoch in range(1, epochs+1):
+        print('epoch ' + str(epoch))
+        counter = 0
+        for data in pd.read_csv(filename, chunksize=chunk_size):
+            counter += 1
+            print('batch ' + str(counter))
+            train_X, train_y, n_cols = prepare_data(data)
+            model = load_or_make_model(n_cols, modelfile)
+            results = model.fit(train_X, train_y, validation_split=0.2, shuffle=True)
+            model.save(modelfile)
 
 #utility function for kaggle submission
 def make_kaggle_submission(model):
