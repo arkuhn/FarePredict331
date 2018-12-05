@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import holidays
 import locationFeatures
+import timeFeatures
+
 
 #NYC Bounding box
 LONGITUDE_MIN = -74.263242
@@ -29,59 +31,35 @@ def cleanData(features):
                             ]
     return cleanedFeatures
 
-def isRushour(dt):
-    """
-    4pm - 6pm -> Military -> 16 - 19
-    5am - 9am -> Military -> 5 - 9
-    """
-    if ((dt.hour >= 5 and dt.hour <= 9) or (dt.hour >= 16 and dt.hour <= 19)):
-        return 1
-    return 0
-
-def isWeekend(dt):
-    if (dt.weekday() < 5):
-        return 0
-    return 1
-
-def isHoliday(dt):
-    #[(month, day), (month, day)...]
-    us_holidays = holidays.UnitedStates()
-    if datetime(dt.year, dt.month, dt.day) in us_holidays:
-        return 1
-    return 0
-
-def processDates(datetimeString):
-    dtObject = datetime.strptime(datetimeString, '%Y-%m-%d %H:%M:%S %Z')
-    return (isRushour(dtObject), isWeekend(dtObject), isHoliday(dtObject))
-
 def normalizePassengerCount(count):
-    return count / MAX_PASSENGERS
+    return round(count / MAX_PASSENGERS, 3)
 
 def processData(row):
     lon1 = row['pickup_longitude']
     lat1 = row['pickup_latitude']
-
     lat2 = row['dropoff_latitude']
     lon2 = row['dropoff_longitude']
-
     dt = row['pickup_datetime']
+    pc = row['passenger_count']
 
     #Extract date time features
-    isRushhour, isWeekend, isHoliday = processDates(dt)
+    (isRushhour, isWeekend, isHoliday, nHour,
+    nDay, nMonth, nYear) = timeFeatures.processDates(dt)
 
     #Extract route features
-    (distance, isAirport, isManhattanPickup, isManhattanDropOff, 
+    (nBearing, vDistance, eDistance, isAirport, isManhattanPickup, isManhattanDropOff, 
     isQueensPickup, isQueensDropOff, isBronxPickup, 
     isBronxDropOff, isStatenPickup, isStatenDropOff, 
     isBrooklynPickup, isBrooklynDropOff) = locationFeatures.processLocation(lat1, lon1, lat2, lon2)
 
-    normalizedPC = normalizePassengerCount(row['passenger_count'])
+    #Passenger count feature
+    normalizedPC = normalizePassengerCount(pc)
 
-    return (isRushhour, isWeekend, isHoliday, 
-    normalizedPC, distance, isAirport, isManhattanPickup, 
-    isManhattanDropOff, isQueensPickup, isQueensDropOff, 
-    isBronxPickup, isBronxDropOff, isStatenPickup, 
-    isStatenDropOff, isBrooklynPickup, isBrooklynDropOff)
+    return (isRushhour, isWeekend, isHoliday, nHour, nDay, nMonth, 
+            nYear, normalizedPC, nBearing, vDistance, eDistance, isAirport, isManhattanPickup, 
+            isManhattanDropOff, isQueensPickup, isQueensDropOff, 
+            isBronxPickup, isBronxDropOff, isStatenPickup, 
+            isStatenDropOff, isBrooklynPickup, isBrooklynDropOff)
 
 def main():
     count = 0
@@ -101,14 +79,15 @@ def main():
         """
         (
         #Datetime
-        featureFrame['isRushHour'], featureFrame['isWeekend'], featureFrame['isHoliday'], 
+        featureFrame['isRushHour'], featureFrame['isWeekend'], featureFrame['isHoliday'],
+        featureFrame['nHour'], featureFrame['nDay'], featureFrame['nMonth'], featureFrame['nYear'],
         
         #Passenger count
         featureFrame['normalizedPC'], 
 
         #Location
-        featureFrame['distance'], featureFrame['isAirport'], featureFrame['isManhattanPickup'], featureFrame['isManhattanDropOff'],
-        featureFrame['isQueensPickup'], featureFrame['isQueensDropOff'], featureFrame['isBronxPickup'],
+        featureFrame['nBearing'], featureFrame['vDistance'], featureFrame['eDistance'], featureFrame['isAirport'], featureFrame['isManhattanPickup'], 
+        featureFrame['isManhattanDropOff'], featureFrame['isQueensPickup'], featureFrame['isQueensDropOff'], featureFrame['isBronxPickup'],
         featureFrame['isBronxDropOff'], featureFrame['isStatenPickup'], featureFrame['isStatenDropOff'],
         featureFrame['isBrooklynPickup'], featureFrame['isBrooklynDropOff']
         ) = zip(*featureFrame.apply(processData, axis=1))

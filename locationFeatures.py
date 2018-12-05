@@ -1,4 +1,6 @@
 import geopy.distance
+import math
+from geographiclib.geodesic import Geodesic
 
 nyc_boroughs={
     'manhattan':{
@@ -58,9 +60,19 @@ def calculateDistance(lon1, lat1, lon2, lat2):
     coords2 = (lat2, lon2)
 
     #The Vincenty distance apparently is more accurate than the Haversine formula
-    distance = geopy.distance.vincenty(coords1, coords2).km
+    vDistance = round(geopy.distance.vincenty(coords1, coords2).km, 3)
 
-    return distance
+    #Euclidian distance
+    eDistance = round(math.sqrt( ((coords1[0]-coords2[0])**2)+((coords1[1]-coords2[1])**2) ),3)
+
+    return vDistance, eDistance
+
+def calculateBearing(lon1, lat1, lon2, lat2):
+    result = Geodesic.WGS84.Inverse(lat1, lon1, lat2, lon2)
+    nBearing = round(result['azi1'] / 360.0, 3)
+
+    return nBearing
+
 
 def isAirport(lon1, lat1, lon2, lat2):
     jfk = airports['jfk']
@@ -141,7 +153,8 @@ def isStaten(lon1, lat1, lon2, lat2):
     return (pickup, dropoff)
 
 def processLocation(lat1, lon1, lat2, lon2):
-    distance = calculateDistance(lon1, lat1, lon2, lat2)
+    vDistance, eDistance = calculateDistance(lon1, lat1, lon2, lat2)
+    nBearing = calculateBearing(lon1, lat1, lon2, lat2)
     airport = isAirport(lon1, lat1, lon2, lat2)
     isManhattanPickup, isManhattanDropOff = isManhattan(lon1, lat1, lon2, lat2)
     isQueensPickup, isQueensDropOff = isQueens(lon1, lat1, lon2, lat2)
@@ -149,4 +162,4 @@ def processLocation(lat1, lon1, lat2, lon2):
     isStatenPickup, isStatenDropOff = isStaten(lon1, lat1, lon2, lat2)
     isBrooklynPickup, isBrooklynDropOff = isBrooklyn(lon1, lat1, lon2, lat2)
 
-    return distance, airport, isManhattanPickup, isManhattanDropOff, isQueensPickup, isQueensDropOff, isBronxPickup, isBronxDropOff, isStatenPickup, isStatenDropOff, isBrooklynPickup, isBrooklynDropOff
+    return nBearing, vDistance, eDistance, airport, isManhattanPickup, isManhattanDropOff, isQueensPickup, isQueensDropOff, isBronxPickup, isBronxDropOff, isStatenPickup, isStatenDropOff, isBrooklynPickup, isBrooklynDropOff

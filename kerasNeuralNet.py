@@ -79,7 +79,8 @@ def batch_train(filename, modelfile):
             model.save(modelfile)
 
 #utility function for kaggle submission
-def make_kaggle_submission(model):
+def make_kaggle_submission(modelfile):
+    model = load_model(modelfile, custom_objects={'root_means_squared_error': root_means_squared_error})
     test_data_x = pd.read_csv("test_processed.csv")
     submission = (pd.read_csv("sample_submission.csv"))
     submission = submission.drop(columns=['fare_amount'])
@@ -100,6 +101,7 @@ def graph_model_results(history):
 
 
 FILE_TO_LOAD='train_processed.csv'
-MODEL_FILENAME='keras_model.h5'
+MODEL_FILENAME='keras_model_c.h5'
 #train(FILE_TO_LOAD, MODEL_FILENAME)
-batch_train(FILE_TO_LOAD, MODEL_FILENAME)
+#batch_train(FILE_TO_LOAD, MODEL_FILENAME)
+#make_kaggle_submission(MODEL_FILENAME)
