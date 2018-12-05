@@ -2,6 +2,7 @@ import numpy
 import pandas as pd
 import time
 import json
+import csv
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Dropout
@@ -22,6 +23,20 @@ import matplotlib.pyplot as plt
 def root_means_squared_error(y_true, y_pred):
         return k.sqrt(k.mean(k.square(y_pred - y_true)))
 
+class LossHistory(Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+
+    def on_epoch_end(self, epoch, logs={}):
+        loss = logs.get('loss')
+        val_loss = logs.get('val_loss')
+        if (loss and val_loss):
+            with open('loss.csv','a') as fd:
+                writer = csv.writer(fd)
+                print('*****writing loss*****')
+                writer.writerow([loss, val_loss])
+            
+
 #Create input and output layers from data
 def prepare_data(data):
     train_X = data.drop(columns=['fare_amount'])
@@ -33,6 +48,7 @@ def prepare_data(data):
 def load_or_make_model(n_cols, modelfile):
     model = Path(modelfile)
     if (not model.is_file()):
+        print('*****creating model*****')
         model = Sequential()
         model.add(Dense(2048, activation='relu', input_shape=(n_cols,)))
         model.add(Dense(1024, activation='relu'))
@@ -44,6 +60,7 @@ def load_or_make_model(n_cols, modelfile):
         model.add(Dense(1))
         model.compile(optimizer='adam', loss=root_means_squared_error)
     else:
+        print('*****loading model*****')
         model = load_model(modelfile, custom_objects={'root_means_squared_error': root_means_squared_error})
     
     return model
@@ -66,16 +83,16 @@ def train(filename, modelfile):
 #Train by loading batches of file
 def batch_train(filename, modelfile):
     epochs = 2
-    chunk_size = 100000
+    chunk_size = 1000
+    history = LossHistory()
     for epoch in range(1, epochs+1):
-        print('epoch ' + str(epoch))
         counter = 0
         for data in pd.read_csv(filename, chunksize=chunk_size):
             counter += 1
-            print('batch ' + str(counter))
+            print('*****batch ' + str(counter) + '*****')
             train_X, train_y, n_cols = prepare_data(data)
             model = load_or_make_model(n_cols, modelfile)
-            results = model.fit(train_X, train_y, validation_split=0.2, shuffle=True)
+            results = model.fit(train_X, train_y, validation_split=0.2, shuffle=True, callbacks=[history])
             model.save(modelfile)
 
 #utility function for kaggle submission
@@ -101,7 +118,8 @@ def graph_model_results(history):
 
 
 FILE_TO_LOAD='train_processed.csv'
-MODEL_FILENAME='keras_model_c.h5'
+MODEL_FILENAME='keras_model.h5'
 #train(FILE_TO_LOAD, MODEL_FILENAME)
-#batch_train(FILE_TO_LOAD, MODEL_FILENAME)
+batch_train(FILE_TO_LOAD, MODEL_FILENAME)
 #make_kaggle_submission(MODEL_FILENAME)
+#gr
