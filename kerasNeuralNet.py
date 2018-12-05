@@ -1,5 +1,7 @@
 import numpy
 import pandas as pd
+import time
+import json
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Dropout
@@ -16,19 +18,20 @@ from math import sqrt
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-
+#Define custom RMSE to use as optimization function
 def root_means_squared_error(y_true, y_pred):
         return k.sqrt(k.mean(k.square(y_pred - y_true)))
 
-def load_data():
-    train_data = pd.read_csv("train_processed.csv")
-    train_X = train_data.drop(columns=['fare_amount'])
-    train_y = train_data[['fare_amount']]
+#Create input and output layers from data
+def prepare_data(data):
+    train_X = data.drop(columns=['fare_amount'])
+    train_y = data[['fare_amount']]
     n_cols = train_X.shape[1]
     return (train_X, train_y, n_cols)
 
-def load_or_make_model(n_cols):
-    model = Path("keras_model.h5")
+#Load model from disk or create from scratch
+def load_or_make_model(n_cols, modelfile):
+    model = Path(modelfile)
     if (not model.is_file()):
         model = Sequential()
         model.add(Dense(2048, activation='relu', input_shape=(n_cols,)))
@@ -41,16 +44,38 @@ def load_or_make_model(n_cols):
         model.add(Dense(1))
         model.compile(optimizer='adam', loss=root_means_squared_error)
     else:
-        model = load_model('keras_model.h5', custom_objects={'root_means_squared_error': root_means_squared_error})
+        model = load_model(modelfile, custom_objects={'root_means_squared_error': root_means_squared_error})
     
     return model
 
+#Save the history of model for graphing later
+def save_history(results):
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    with open('history' + timestr + '.json', 'w') as f:
+        json.dump(results.history, f)
 
-def train(model, train_X, train_y):
-    history = model.fit(train_X, train_y, validation_split=0.2, shuffle=True, epochs=60)
-    model.save('keras_model.h5')
-    return history
+#Train by loading the entire file
+def train(filename, modelfile):
+    data = pd.read_csv(filename)
+    train_X, train_y, n_cols = prepare_data(data)
+    model = load_or_make_model(n_cols, modelfile)
+    results = model.fit(train_X, train_y, validation_split=0.2, shuffle=True, epochs=60)
+    model.save(modelfile)
+    save_history(results)
 
+#Train by loading batches of file
+def batch_train(filename, modelfile):
+    chunk_size = 200
+    counter = 0
+    for data in pd.read_csv(filename, chunksize=chunk_size):
+        counter += 1
+        print('batch ' + str(counter))
+        train_X, train_y, n_cols = prepare_data(data)
+        model = load_or_make_model(n_cols, modelfile)
+        results = model.fit(train_X, train_y, validation_split=0.2, shuffle=True, epochs=3)
+        #Save first time and every 10 batches
+        model.save(modelfile)
+    #save_history(results)
 
 #utility function for kaggle submission
 def make_kaggle_submission(model):
@@ -59,11 +84,10 @@ def make_kaggle_submission(model):
     submission = submission.drop(columns=['fare_amount'])
     test_y_predictions = model.predict(test_data_x)
     test_y_predictions_df = pd.DataFrame(test_y_predictions)
-    print(test_y_predictions_df.head())
     submission = submission.assign(fare_amount=test_y_predictions_df)
-    #submission = pd.concat([keys, test_y_predictions_df], ignore_index=True)
     submission.to_csv("submission.csv", index=False)
 
+#utility function for graphing loss history
 def graph_model_results(history):
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
@@ -73,8 +97,8 @@ def graph_model_results(history):
     plt.legend(['train', 'test'], loc='upper left')
     plt.show()
 
-train_X, train_y, n_cols = load_data()
-model = load_or_make_model(n_cols)
-results = train(model, train_X, train_y)
-graph_model_results(results)
-make_submission(model)
+
+FILE_TO_LOAD='train_processed.csv'
+MODEL_FILENAME='keras_model.h5'
+#train(FILE_TO_LOAD, MODEL_FILENAME)
+batch_train(FILE_TO_LOAD, MODEL_FILENAME)

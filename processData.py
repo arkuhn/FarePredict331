@@ -88,7 +88,7 @@ def main():
     linesRead = 0
     #Read and clean features by chunk
     print(datetime.now())
-    for chunk in pd.read_csv('train.csv', chunksize=100000):
+    for chunk in pd.read_csv('train.csv', chunksize=5000):
         #linesRead += 100000
         #if (linesRead <= 40000000):
         #    continue
